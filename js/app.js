@@ -99,14 +99,28 @@ class UI {
         }, 3000);
    }
 
-   imprimirCitas({citas}) { // Se puede aplicar destructuring desde la función...
+   imprimirCitas() { // Se puede aplicar destructuring desde la función...
        
         this.limpiarHTML();
 
-        this.textoHeading(citas);
+       
 
-        citas.forEach(cita => {
-            const {mascota, propietario, telefono, fecha, hora, sintomas, id } = cita;
+        //leer el contenido de la base de datos
+        const objectStore = DB.transaction('citas').objectStore('citas');
+            const fnTextHeading = this.textoHeading;
+
+            const total = objectStore.count();
+
+            total.onsuccess = function () {
+                fnTextHeading(total.result);
+            }
+         
+        objectStore.openCursor().onsuccess = function(e) {
+            // cursor se va a ubicar en el registro indicado para accede ra los datos
+            const cursor = e.target.result;
+
+            if (cursor) {
+                 const {mascota, propietario, telefono, fecha, hora, sintomas, id } = cursor.value;
 
             const divCita = document.createElement('div');
             divCita.classList.add('cita', 'p-3');
@@ -156,11 +170,15 @@ class UI {
             divCita.appendChild(btnEditar)
 
             contenedorCitas.appendChild(divCita);
-        });    
+                
+            cursor.continue();
+            }
+            
+        }
    }
 
-   textoHeading(citas) {
-        if(citas.length > 0 ) {
+   textoHeading(resultado) {
+        if(resultado > 0 ) {
             heading.textContent = 'Administra tus Citas '
         } else {
             heading.textContent = 'No hay Citas, comienza creando una'
@@ -176,8 +194,10 @@ class UI {
 
 
 const administrarCitas = new Citas();
-console.log(administrarCitas);
+
 const ui = new UI(administrarCitas);
+
+
 
 function nuevaCita(e) {
     e.preventDefault();
@@ -232,7 +252,7 @@ function nuevaCita(e) {
 
 
     // Imprimir el HTML de citas
-    ui.imprimirCitas(administrarCitas);
+    ui.imprimirCitas();
 
     // Reinicia el objeto para evitar futuros problemas de validación
     reiniciarObjeto();
@@ -256,7 +276,7 @@ function reiniciarObjeto() {
 function eliminarCita(id) {
     administrarCitas.eliminarCita(id);
 
-    ui.imprimirCitas(administrarCitas)
+    ui.imprimirCitas()
 }
 
 function cargarEdicion(cita) {
@@ -301,6 +321,9 @@ function crearDB() {
     crearDB.onsuccess =function () {
         console.log('todo salio bien ');
             DB = crearDB.result;
+
+            //mostrar citas al cargar 
+            ui.imprimirCitas();
         }
 
         crearDB.onupgradeneeded= function (e) {
